@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<title>Rewind</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Nunito+Sans:ital,wght@0,400;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: search bar up top, results list left, transcript viewer right (stacks on phones). Tape-log feel: timestamps in mono, transcripts in serif. */
+:root{
+  --bg:#fbf5ec; --surface:#ffffff; --ink:#2b1a2e; --muted:#6f5b72; --line:#ecdcd3;
+  --accent:#d6336c; --accent-soft:#e3f6f3; --hl:#dcf58a; --chip:#fde3ec; --ts:#7b3fa8;
+  --lime:#a6d64a; --aqua:#5cc8c0; --cherry:#a3203a; --violet:#a16ad4;
+  --title:"DM Serif Display", "Didot", "Bodoni 72", Georgia, serif;
+  --display:"Nunito Sans", "Helvetica Neue", Arial, sans-serif;
+  --body:"Nunito Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono:"DM Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1d1420; --surface:#2a1d2f; --ink:#f6e9ef; --muted:#bba5c0; --line:#41304a;
+  --accent:#ff6f9e; --accent-soft:#163a3a; --hl:#51621a; --chip:#45233a; --ts:#c9a2f0;
+  --lime:#a6d64a; --aqua:#5cc8c0; --cherry:#c43a55; --violet:#a16ad4; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1d1420; --surface:#2a1d2f; --ink:#f6e9ef; --muted:#bba5c0; --line:#41304a;
+  --accent:#ff6f9e; --accent-soft:#163a3a; --hl:#51621a; --chip:#45233a; --ts:#c9a2f0;
+  --lime:#a6d64a; --aqua:#5cc8c0; --cherry:#c43a55; --violet:#a16ad4; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+.stripe{height:10px;width:min(320px,100%);margin-top:10px;border-radius:999px;background:linear-gradient(110deg,var(--lime) 0 25%,var(--aqua) 25% 50%,var(--cherry) 50% 75%,var(--violet) 75% 100%)}
+header h1{font-family:var(--title);font-weight:400;font-size:2.8rem;line-height:1;margin:0;letter-spacing:-.01em;color:var(--cherry)}
+header p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.sample{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:.75rem;color:var(--muted);border:1px dashed var(--line);padding:2px 8px;border-radius:4px}
+form{display:flex;gap:8px;flex-wrap:wrap}
+#q{flex:1 1 320px;min-width:0;font:inherit;font-size:1.05rem;padding:12px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+#q:focus{outline:none;border-color:var(--accent)}
+button{font-family:var(--display);font-weight:800;font-size:1rem;cursor:pointer}
+#go{padding:12px 22px;border:0;border-radius:8px;background:var(--accent);color:#fff}
+#go:focus-visible,.chip:focus-visible,.result:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tries{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-family:var(--display);font-size:.85rem;color:var(--muted)}
+.chip{border:0;background:var(--chip);color:var(--ink);padding:6px 12px;border-radius:999px;font-family:var(--body);font-weight:400;font-size:.9rem}
+.chip:hover{background:var(--hl)}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:start}
+@media (max-width:820px){main{grid-template-columns:1fr}}
+.col-label{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+#results{display:grid;gap:10px}
+.result{display:grid;gap:6px;text-align:left;width:100%;background:var(--surface);color:var(--ink);border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;font-family:var(--body);font-weight:400;font-size:1rem}
+.result:hover{border-color:var(--muted)}
+.result[aria-current="true"]{border-color:var(--accent)}
+.r-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.ts{font-family:var(--mono);font-size:.85rem;color:var(--ts);font-weight:500;white-space:nowrap}
+.r-show{font-family:var(--title);font-weight:400;font-size:1.15rem}
+.r-line{margin:0;font-family:var(--title);font-style:italic;font-size:1.08rem;line-height:1.4}
+.src{font-family:var(--mono);font-size:.75rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+mark{background:var(--hl);color:inherit;padding:0 1px;border-radius:2px}
+.empty{color:var(--muted);background:var(--surface);border:1.5px dashed var(--line);border-radius:8px;padding:16px}
+.viewer{background:var(--surface);border:1.5px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:12px;min-width:0}
+.v-head h2{font-family:var(--title);font-weight:400;margin:0;font-size:1.6rem;line-height:1.15}
+.v-meta{font-family:var(--mono);font-size:.8rem;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:4px}
+.track{position:relative;height:28px;background:var(--chip);border-radius:4px;overflow:hidden}
+.tick{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.playhead{position:absolute;top:0;bottom:0;width:3px;background:var(--cherry);transition:left .3s}
+.playhead span{position:absolute;top:5px;left:7px;font-family:var(--mono);font-size:.72rem;color:var(--ink);white-space:nowrap}
+.trans{max-height:380px;overflow-y:auto;display:grid;gap:2px;border-top:1px solid var(--line);padding-top:8px}
+.tl{display:grid;grid-template-columns:78px minmax(0,1fr);gap:10px;padding:6px 8px;border-radius:6px}
+.tl .t{font-family:var(--mono);font-size:.8rem;color:var(--muted);padding-top:2px}
+.tl .who{font-family:var(--display);font-weight:700;font-size:.85rem}
+.tl p{margin:0}
+.tl.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--aqua)}
+.tl.on .t{color:var(--ts);font-weight:500}
+.verify a{color:var(--accent)}
+.verify{font-family:var(--display);font-size:.85rem;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px}
+@media (prefers-reduced-motion:reduce){.playhead{transition:none}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>Rewind</h1>
+    <div class="stripe" aria-hidden="true"></div>
+    <p>Describe a clip the way you remember it. Rewind finds the exact moment in the archive and shows you the source so you can check it before it airs.</p>
+    <span class="sample">Demo archive: real NASA mission transcripts (public domain), timed by mission clock</span>
+  </header>
+
+  <form id="f" role="search">
+    <label for="q" class="col-label" style="flex-basis:100%;margin:0">What are you looking for?</label>
+    <input id="q" type="search" autocomplete="off" placeholder="e.g. when the astronaut described the moon dust">
+    <button id="go" type="submit">Find clip</button>
+  </form>
+  <div class="tries">Try:
+    <button class="chip" type="button">astronaut describing the moon dust</button>
+    <button class="chip" type="button">the computer alarm during landing</button>
+    <button class="chip" type="button">mission control relieved after landing</button>
+    <button class="chip" type="button">something leaking out into space</button>
+  </div>
+
+  <main>
+    <section aria-labelledby="rl">
+      <p class="col-label" id="rl">Matching moments</p>
+      <div id="results"></div>
+    </section>
+    <section aria-labelledby="vl">
+      <p class="col-label" id="vl">Source</p>
+      <div class="viewer" id="viewer"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+// Real NASA air-to-ground transcripts (US government works, public domain).
+// Times are mission elapsed time in seconds; start/dur define the recording window shown.
+const H=(h,m,sec)=>h*3600+m*60+sec;
+const EPISODES = [
+ {id:"a11land",show:"Apollo 11",title:"Lunar landing",date:"1969-07-20",start:H(102,38,0),dur:600,
+  src:"https://pubs.usgs.gov/publication/70043037",srcName:"NASA Apollo 11 voice transcript",lines:[
+  [H(102,38,26),"Neil Armstrong (commander)","Program alarm."],
+  [H(102,38,30),"Neil Armstrong (commander)","It's a 1202."],
+  [H(102,38,53),"Charlie Duke (CAPCOM, Houston)","Roger. We got... We're Go on that alarm."],
+  [H(102,42,25),"Charlie Duke (CAPCOM, Houston)","Roger. 1201 alarm. We're GO. Same type. We're GO."],
+  [H(102,44,31),"Charlie Duke (CAPCOM, Houston)","60 seconds."],
+  [H(102,45,2),"Charlie Duke (CAPCOM, Houston)","30 seconds."],
+  [H(102,45,40),"Buzz Aldrin (lunar module pilot)","Contact light."],
+  [H(102,45,58),"Neil Armstrong (commander)","Houston, Tranquility Base here. The Eagle has landed."],
+  [H(102,46,6),"Charlie Duke (CAPCOM, Houston)","Roger, Twan... Tranquility, we copy you on the ground. You got a bunch of guys about to turn blue. We're breathing again. Thanks a lot."],
+  [H(102,46,50),"Buzz Aldrin (lunar module pilot)","Very smooth touchdown."]]},
+ {id:"a11eva",show:"Apollo 11",title:"First moonwalk",date:"1969-07-21",start:H(109,23,0),dur:1800,
+  src:"https://pubs.usgs.gov/publication/70043037",srcName:"NASA Apollo 11 voice transcript",lines:[
+  [H(109,23,38),"Neil Armstrong (commander)","I'm at the foot of the ladder. The LM footpads are only depressed in the surface about 1 or 2 inches."],
+  [H(109,24,48),"Neil Armstrong (commander)","That's one small step for man, one giant leap for mankind."],
+  [H(109,24,48),"Neil Armstrong (commander)","Yes, the surface is fine and powdery. I can kick it up loosely with my toe."],
+  [H(109,24,48),"Neil Armstrong (commander)","I can see the footprints of my boots and the treads in the fine sandy particles."],
+  [H(109,25,45),"Neil Armstrong (commander)","The descent engine did not leave a crater of any size."],
+  [H(109,34,56),"Neil Armstrong (commander)","Be advised that a lot of the rock samples out here, the hard rock samples, have what appear to be vesicles."],
+  [H(109,43,24),"Buzz Aldrin (lunar module pilot)","Magnificent desolation."],
+  [H(109,44,11),"Buzz Aldrin (lunar module pilot)","Right in this area I don't think there's much of anything but fine powder."],
+  [H(109,46,8),"Buzz Aldrin (lunar module pilot)","There's absolutely no crater there at all from the engine."],
+  [H(109,49,37),"Buzz Aldrin (lunar module pilot)","I would make a first guess of some biotite."],
+  [H(109,50,28),"Buzz Aldrin (lunar module pilot)","Soil compacts underneath. You don't sink down more than a quarter of an inch."]]},
+ {id:"a13",show:"Apollo 13",title:"\u201cWe've had a problem\u201d",date:"1970-04-13",start:H(55,55,0),dur:900,
+  src:"https://www.nasa.gov/history/houston-weve-had-a-problem/",srcName:"NASA Apollo 13 air-to-ground transcript",lines:[
+  [H(55,55,19),"Jack Swigert (command module pilot)","Okay, Houston, we've had a problem here."],
+  [H(55,55,28),"Jack Lousma (CAPCOM, Houston)","This is Houston. Say again, please."],
+  [H(55,55,35),"Jim Lovell (commander)","Houston, we've had a problem. We've had a Main B Bus Undervolt."],
+  [H(56,9,7),"Jim Lovell (commander)","And it looks to me, looking out the hatch, that we are venting something. We are venting something out into space."]]}
+];
+
+// Plain-language matching: words map to concepts, so "moon dust" also finds "fine powder".
+const SYN = [
+ ["alarm","alarms","1202","1201","error","errors","warning","computer","program","fault","glitch"],
+ ["problem","problems","trouble","emergency","wrong","failure","undervolt","issue"],
+ ["landing","landed","land","touchdown","touch","contact","eagle","tranquility","base","arrive","arrived"],
+ ["moon","lunar","surface","moonwalk"],
+ ["step","steps","walk","walking","foot","footprint","footprints","boots","ladder","leap","toe"],
+ ["rock","rocks","sample","samples","stone","stones","geology","biotite","vesicles","mineral"],
+ ["dust","powder","powdery","soil","sand","sandy","particles","dirt","ground"],
+ ["crater","hole","engine","descent","blast"],
+ ["venting","vent","leak","leaking","gas","oxygen","explosion","escaping"],
+ ["nervous","worried","relief","relieved","breathing","blue","scared","tense","holding"],
+ ["beautiful","magnificent","desolation","view","describing","description","looks"],
+ ["houston","capcom","mission","control"],
+ ["countdown","seconds","fuel","60","30","time"],
+ ["first","famous","historic"]
+];
+const STOP = new Set("a an the of in on at to for and or with about where who that this was is it i my we me said says say talking talked interview person guy someone clip one episode story when from during whose some has had have their them they astronaut astronauts out into here there what part moment".split(" "));
+const C = {}; SYN.forEach((g,i)=>g.forEach(w=>C[w]=i));
+const stem = w => w.replace(/(ing|ed|es|s)$/,"");
+const toks = s => (s.toLowerCase().match(/[a-z0-9]+/g)||[]);
+const concept = w => C[w]!==undefined ? "c"+C[w] : (C[stem(w)]!==undefined ? "c"+C[stem(w)] : "w"+stem(w));
+
+const SEGS = [];
+EPISODES.forEach(ep=>ep.lines.forEach(([t,who,text],i)=>{
+  const bag = new Set([...toks(text),...toks(who),...toks(ep.title)].map(concept));
+  const own = new Set([...toks(text),...toks(who)].map(concept));
+  const raw = new Set([...toks(text),...toks(who)].map(stem));
+  SEGS.push({ep,i,t,who,text,bag,own,raw});
+}));
+
+function search(q){
+  const words = toks(q).filter(w=>!STOP.has(w));
+  const qc = [...new Set(words.map(concept))];
+  const qs = [...new Set(words.map(stem))];
+  if(!qc.length) return {qc,hits:[]};
+  const hits = SEGS.map(s=>{
+    let sc=0; qc.forEach(c=>{ if(s.own.has(c)) sc+=2; else if(s.bag.has(c)) sc+=0.75; });
+    let ex=0; qs.forEach(w=>{ if(s.raw.has(w)) ex+=1; });
+    return {s,sc:Math.min(1, sc/(qc.length*2) + 0.15*ex/qs.length)};
+  }).filter(h=>h.sc>=0.3).sort((a,b)=>b.sc-a.sc).slice(0,5);
+  return {qc,hits};
+}
+
+const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+const met = s => `${String(Math.floor(s/3600)).padStart(3,"0")}:${String(Math.floor(s%3600/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtDate = d => new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+function highlight(text,qc){
+  return esc(text).replace(/[A-Za-z0-9]+/g,w=>{
+    const c=concept(w.toLowerCase());
+    return (!STOP.has(w.toLowerCase()) && qc.includes(c)) ? `<mark>${w}</mark>` : w;
+  });
+}
+
+const $r=document.getElementById("results"), $v=document.getElementById("viewer"), $q=document.getElementById("q");
+let current=null, lastQc=[];
+
+function strength(sc){return sc>=.75?"Strong match":sc>=.5?"Good match":"Possible match"}
+
+function run(q){
+  const {qc,hits}=search(q); lastQc=qc;
+  if(!q.trim()){ $r.innerHTML=`<div class="empty">Type what you remember about the clip, then press Find clip.</div>`; return; }
+  if(!hits.length){ $r.innerHTML=`<div class="empty">No moments matched “${esc(q)}”. Try describing who was speaking or what was happening.</div>`; showEp(null); return; }
+  $r.innerHTML="";
+  hits.forEach((h,k)=>{
+    const s=h.s, b=document.createElement("button");
+    b.type="button"; b.className="result"; b.id="r"+k;
+    b.innerHTML=`<div class="r-top"><span class="r-show">${esc(s.ep.title)}</span><span class="ts">▶ ${met(s.t)}</span></div>
+      <p class="r-line">“${highlight(s.text,qc)}”</p>
+      <div class="src"><span>${esc(s.who)}</span><span>${esc(s.ep.show)}</span><span>${fmtDate(s.ep.date)}</span><span>${strength(h.sc)}</span></div>`;
+    b.onclick=()=>select(k,s);
+    $r.appendChild(b);
+  });
+  select(0,hits[0].s);
+}
+
+function select(k,s){
+  [...$r.children].forEach((el,j)=>el.setAttribute("aria-current",j===k?"true":"false"));
+  showEp(s);
+}
+
+function showEp(s){
+  if(!s){ $v.innerHTML=`<div class="empty">Pick a result to see the full transcript and where the moment falls in the episode.</div>`; return; }
+  const ep=s.ep, off=s.t-ep.start, pct=(off/ep.dur*100).toFixed(2);
+  let ticks=""; for(let m=300;m<ep.dur;m+=300) ticks+=`<div class="tick" style="left:${m/ep.dur*100}%"></div>`;
+  $v.innerHTML=`<div class="v-head"><h2>${esc(ep.title)}</h2>
+    <div class="v-meta"><span>${esc(ep.show)}</span><span>${fmtDate(ep.date)}</span><span>Recording ${met(ep.start)} to ${met(ep.start+ep.dur)}</span></div></div>
+    <div class="track" aria-label="Clip at ${fmt(off)} into a ${fmt(ep.dur)} recording">${ticks}<div class="playhead" style="left:${pct}%"><span>${fmt(off)} in</span></div></div>
+    <div class="trans" id="trans">${ep.lines.map(([t,who,text],i)=>`<div class="tl${i===s.i?" on":""}" id="tl${i}"><span class="t">${met(t)}</span><div><div class="who">${esc(who)}</div><p>${i===s.i?highlight(text,lastQc):esc(text)}</p></div></div>`).join("")}</div>
+    <div class="verify">Check before air: confirm the quote against the original audio at mission time ${met(s.t)}. Source: <a href="${ep.src}" target="_blank" rel="noopener">${esc(ep.srcName)}</a></div>`;
+  const on=document.getElementById("tl"+s.i), tr=document.getElementById("trans");
+  if(on&&tr) tr.scrollTop = on.offsetTop - tr.offsetTop - 8;
+}
+
+document.getElementById("f").addEventListener("submit",e=>{e.preventDefault();run($q.value)});
+document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{$q.value=c.textContent;run($q.value)});
+$q.value="astronaut describing the moon dust"; run($q.value);
+</script>
+
+</body>
+</html>
